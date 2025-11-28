@@ -64,7 +64,7 @@ From `client/`:
 - `npm run dev` / `npm run build`
 
 ## Data / Schema
-- First run initializes pgvector and the `profiles` table via `server/db/init.sql`.
+- First run initializes pgvector and the `profiles` table via `server/migrations/init.sql`.
 - Columns include `gender`, `who_am_i`, `looking_for`, `canonical`, `dynamic_features`, `self_embedding`, `pref_embedding`, plus raw file paths/text.
 
 ## Troubleshooting
