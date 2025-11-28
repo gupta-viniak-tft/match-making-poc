@@ -1,0 +1,25 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+
+# Virtual envs
+.venv/
+venv/
+
+# Environment files
+.env
+
+# Builds / artifacts
+/dist/
+/build/
+
+# Node modules (if any tooling used)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Project-specific
+uploads/
+*.log
