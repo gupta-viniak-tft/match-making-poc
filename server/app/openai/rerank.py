@@ -188,6 +188,7 @@ def rerank_with_llm(
                 # if you later include who_am_i per candidate, pass it through:
                 "who_am_i": c.get("who_am_i") or who_map.get(cid) or "",
                 "components": components_map.get(cid),
+                "location_proximity": (components_map.get(cid) or {}).get("distance"),
             }
         )
 
@@ -204,6 +205,8 @@ def rerank_with_llm(
 
     candidates_block_lines: list[str] = ["Candidates:"]
     for c in cand_payload:
+        loc_prox = c.get("location_proximity")
+        loc_line = f"  location_proximity: {loc_prox:.3f}" if isinstance(loc_prox, (int, float)) else "  location_proximity: null"
         candidates_block_lines.append(
             (
                 f"- profile_id: {c['profile_id']}\n"
@@ -211,6 +214,7 @@ def rerank_with_llm(
                 f"  base_score: {c['base_score']:.3f}\n"
                 f"  who_am_i: {c.get('who_am_i', '')}\n"
                 f"  looking_for: {c['looking_for']}\n"
+                f"{loc_line}\n"
                 f"  canonical: {_canonical_text(c['canonical'])}\n"
                 f"  dynamic: {_dynamic_text(c['dynamic_features'])}"
             )

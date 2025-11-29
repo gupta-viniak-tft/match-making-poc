@@ -13,7 +13,7 @@ export default function GlobalLoader() {
           <div className="absolute inset-2 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
           <div className="absolute inset-4 rounded-full bg-white shadow" />
         </div>
-        <p className="mt-3 text-center text-sm font-semibold text-blue-700 drop-shadow">
+        <p className="mt-3 text-center text-sm font-semibold text-blue-500 drop-shadow">
           loading...!
         </p>
       </div>
