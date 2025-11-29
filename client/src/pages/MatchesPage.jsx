@@ -47,6 +47,10 @@ export default function MatchesPage() {
 
   useEffect(() => {
     if (!resolvedId) return;
+    if (cachedProfiles[resolvedId] && cachedMatches[resolvedId]) {
+      fetchedRef.current[resolvedId] = true;
+      return;
+    }
     if (fetchedRef.current[resolvedId]) return;
     fetchedRef.current[resolvedId] = true;
     const fetchProfileAndMatches = async () => {
@@ -98,11 +102,10 @@ export default function MatchesPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto mt-10 px-4 space-y-6">
+    <div className="max-w-5xl mx-auto mt-10 px-4 space-y-6 pb-10">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm text-blue-700 font-semibold">Semantic Matches</p>
-          <h2 className="text-2xl font-bold text-gray-900">Matches</h2>
+          <h2 className="text-blue-700 font-semibold">Semantic Matches</h2>
           <p className="text-sm text-gray-600">
             Based on your profile and preferences.
           </p>
@@ -111,7 +114,7 @@ export default function MatchesPage() {
           type="button"
           onClick={handleRerank}
           disabled={loading || matches.length === 0}
-          className="px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold bg-white shadow-sm cursor-pointer hover:bg-gray-50 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className="w-full md:w-auto text-center px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold bg-white shadow-sm cursor-pointer hover:bg-gray-50 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
         >
           View AI Based Analysis!
         </button>
@@ -123,14 +126,6 @@ export default function MatchesPage() {
             {seeker.canonical?.name || "Your profile"}
           </h3>
           <div className="grid gap-4 md:grid-cols-2 text-sm text-gray-800">
-            <div className="min-w-[220px]">
-              <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Self</p>
-              <p className="mt-1">{seeker.who_am_i || "—"}</p>
-            </div>
-            <div className="min-w-[220px]">
-              <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Looking for</p>
-              <p className="mt-1">{seeker.looking_for || "—"}</p>
-            </div>
             <div>
               <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Age</p>
               <p className="mt-1">{seeker.canonical?.approx_age ?? "—"}</p>
@@ -201,9 +196,9 @@ export default function MatchesPage() {
         </p>
       )}
 
-      <div className="mt-6 grid gap-4">
+      <div className="mt-6 grid gap-4 md:gap-5">
         {matches.map((match) => (
-          <div key={match.profile_id} className="bg-white rounded-xl shadow p-4">
+          <div key={match.profile_id} className="bg-white rounded-xl shadow p-4 md:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-lg">
