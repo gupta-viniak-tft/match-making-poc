@@ -10,9 +10,11 @@ from ..openai import (
     build_self_text,
     build_pref_text,
     get_embedding,
+    rerank_with_llm,
 )
 from ..schemas.profile import ProfileResponse
 from ..matching import top_matches
+from ..utils.geo import geocode_city
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -43,11 +45,17 @@ async def create_profile(
     self_emb = get_embedding(self_text)
     pref_emb = get_embedding(pref_text)
 
+    coords = None
+    seeker_city = canonical.get("city")
+    if seeker_city:
+        coords = geocode_city(seeker_city)
     # 3. Persist
     profile = Profile(
         id=str(uuid4()),
         pdf_path=pdf_path,
         pdf_text=pdf_text,
+        location_lat=coords[0] if coords else None,
+        location_lon=coords[1] if coords else None,
         who_am_i=who_am_i,
         looking_for=looking_for,
         gender=gender,
@@ -68,5 +76,29 @@ async def create_profile(
 
 @router.get("/matches/{profile_id}", response_model=list[ProfileResponse])
 def get_matches(profile_id: str, db: Session = Depends(get_db)):
-    matches = top_matches(db, source_profile_id=profile_id, limit=20)
-    return [ProfileResponse(**m) for m in matches]
+    matches = top_matches(db, source_profile_id=profile_id, limit=50)
+    return [ProfileResponse(**m) for m in matches[:20]]
+
+
+@router.get("/matches/ai/{profile_id}", response_model=list[ProfileResponse])
+def get_matches_rerank(profile_id: str, db: Session = Depends(get_db)):
+    matches = top_matches(db, source_profile_id=profile_id, limit=50)
+    seeker = db.get(Profile, profile_id)
+    reranked = rerank_with_llm(seeker, matches, db=db, limit=20)
+    return [ProfileResponse(**m) for m in reranked]
+
+
+@router.get("/{profile_id}", response_model=ProfileResponse)
+def get_profile(profile_id: str, db: Session = Depends(get_db)):
+    profile = db.get(Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    return ProfileResponse(
+        profile_id=profile.id,
+        canonical=profile.canonical,
+        dynamic_features=profile.dynamic_features,
+        score=None,
+        looking_for=profile.looking_for,
+        who_am_i=profile.who_am_i,
+    )

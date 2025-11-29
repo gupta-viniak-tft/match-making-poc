@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text
+from sqlalchemy import Column, String, DateTime, Text, Float
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
@@ -16,6 +16,8 @@ class Profile(Base):
     # Raw
     pdf_path = Column(String, nullable=True)
     pdf_text = Column(Text, nullable=True)
+    location_lat = Column(Float, nullable=True)
+    location_lon = Column(Float, nullable=True)
 
     who_am_i = Column(Text, nullable=False)
     looking_for = Column(Text, nullable=False)

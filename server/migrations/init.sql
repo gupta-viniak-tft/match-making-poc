@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     gender             VARCHAR NOT NULL,
     pdf_path           VARCHAR,
     pdf_text           TEXT,
+    location_lat       DOUBLE PRECISION,
+    location_lon       DOUBLE PRECISION,
     who_am_i           TEXT NOT NULL,
     looking_for        TEXT NOT NULL,
     canonical          JSONB,

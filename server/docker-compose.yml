@@ -1,3 +1,5 @@
+name: match-maker
+
 services:
   api:
     build: .

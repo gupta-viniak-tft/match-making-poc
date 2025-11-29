@@ -39,15 +39,16 @@ Client env (optional): `client/.env.local` with `VITE_API_BASE=http://localhost:
 - `POST /profile`  
   Multipart form: `profile_file` (pdf/doc/docx), `who_am_i`, `looking_for`, `gender`.  
   Behavior: saves file, extracts text, builds canonical/dynamic features via OpenAI, generates `self_embedding` and `pref_embedding`, persists profile.
+- `GET /profile/{profile_id}`  
+  Returns the stored profile (canonical, dynamic_features, who_am_i, looking_for).
 - `GET /profile/matches/{profile_id}`  
   Returns scored matches (opposite gender) with `score`, `canonical`, `dynamic_features`, and `looking_for`.
+- `GET /profile/matches/ai/{profile_id}`  
+  Re-ranks the match shortlist with an LLM for nuanced scoring (respects flexible prefs like “any location”).
 
 ## Matching Logic
-- Pref vs candidate self: cosine similarity of your `pref_embedding` against candidate `self_embedding`.
-- Self vs candidate pref: cosine similarity of your `self_embedding` against candidate `pref_embedding`.
-- Canonical overlap: compares structured fields (city/state/country/education/profession/religion/caste).
-- Dynamic overlap: compares dynamic feature keys.
-- Opposite gender filter; scores are weighted and normalized by available signals.
+- Retrieval: pref vs candidate self, self vs candidate pref (embeddings), canonical overlap, dynamic overlap; opposite gender filter; weights normalized by available signals.
+- AI: LLM re-ranker incorporates stated flexibility (e.g., “any location”) to avoid penalizing flexible fields.
 
 ## Development Commands
 From `server/`:

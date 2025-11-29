@@ -11,3 +11,4 @@ openai
 pdfplumber
 python-docx
 numpy
+requests

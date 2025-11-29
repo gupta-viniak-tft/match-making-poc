@@ -123,6 +123,7 @@ def top_matches(db: Session, source_profile_id: str, limit: int = 20):
                 "canonical": cand.canonical,
                 "dynamic_features": cand.dynamic_features,
                 "looking_for": cand.looking_for,
+                "who_am_i": cand.who_am_i,
             }
         )
 

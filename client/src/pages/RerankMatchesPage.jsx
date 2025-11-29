@@ -1,25 +1,24 @@
-
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useMatchStore from "../store/useMatchStore";
 import useLoadingStore from "../store/useLoadingStore";
 
-export default function MatchesPage() {
-  const { profileId } = useParams();
+export default function RerankMatchesPage() {
+  const { profileId: profileIdFromPath } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [matches, setMatches] = useState([]);
-  const [seeker, setSeeker] = useState(null);
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [seeker, setSeeker] = useState(null);
   const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
-  const resolvedId = profileId || searchParams.get("profileId") || localStorage.getItem("lastProfileId");
+  const resolvedId = profileIdFromPath || searchParams.get("profileId") || localStorage.getItem("lastProfileId");
   const {
     profiles: cachedProfiles,
-    matches: cachedMatches,
+    reranks: cachedReranks,
     setProfile: cacheProfile,
-    setMatches: cacheMatches,
-    clearMatches,
+    setRerank: cacheRerank,
+    clearRerank,
   } = useMatchStore();
   const { start, stop } = useLoadingStore();
   const fetchedRef = useRef({});
@@ -27,10 +26,27 @@ export default function MatchesPage() {
   useEffect(() => {
     // Clear local view on profile change before fetching new data
     setSeeker(null);
-    setMatches([]);
+    setResults([]);
     setError("");
     fetchedRef.current[resolvedId] = false;
   }, [resolvedId]);
+
+  const componentLabels = {
+    pref_to_self: "How well they fit what you want",
+    self_to_pref: "How well you fit what they want",
+    distance: "Location proximity",
+  };
+  const blurClass = loading ? "filter blur-sm pointer-events-none select-none" : "";
+
+  const formatReason = (match) => {
+    if (match.reason) return match.reason;
+    const comps = match.components || {};
+    const strong = Object.entries(comps)
+      .filter(([k, v]) => componentLabels[k] && v >= 0.5)
+      .map(([k]) => componentLabels[k] || k);
+    if (strong.length === 0) return "Compatibility driven by a mix of signals.";
+    return `Good alignment on: ${strong.join(", ")}.`;
+  };
 
   useEffect(() => {
     if (!resolvedId) {
@@ -40,45 +56,45 @@ export default function MatchesPage() {
     if (cachedProfiles[resolvedId]) {
       setSeeker(cachedProfiles[resolvedId]);
     }
-    if (cachedMatches[resolvedId]) {
-      setMatches(cachedMatches[resolvedId]);
+    if (cachedReranks[resolvedId]) {
+      setResults(cachedReranks[resolvedId]);
     }
-  }, [resolvedId, cachedProfiles, cachedMatches]);
+  }, [resolvedId, cachedProfiles, cachedReranks]);
 
   useEffect(() => {
     if (!resolvedId) return;
     if (fetchedRef.current[resolvedId]) return;
     fetchedRef.current[resolvedId] = true;
-    const fetchProfileAndMatches = async () => {
+    const fetchProfileAndRerank = async () => {
       setLoading(true);
       start();
       setError("");
-      setMatches([]); // clear local view
-      clearMatches(resolvedId); // clear cache for this id
+      setResults([]); // clear local view
+      clearRerank(resolvedId); // clear cache for this id
       try {
-        const [profileRes, matchesRes] = await Promise.all([
+        const [profileRes, rerankRes] = await Promise.all([
           fetch(`${API_BASE}/profile/${resolvedId}`),
-          fetch(`${API_BASE}/profile/matches/${resolvedId}`),
+          fetch(`${API_BASE}/profile/matches/ai/${resolvedId}`),
         ]);
 
         if (!profileRes.ok) {
           const msg = await profileRes.text();
           throw new Error(msg || "Failed to fetch your profile");
         }
-        if (!matchesRes.ok) {
-          const msg = await matchesRes.text();
-          throw new Error(msg || "Failed to fetch matches");
+        if (!rerankRes.ok) {
+          const msg = await rerankRes.text();
+          throw new Error(msg || "Failed to fetch reranked matches");
         }
 
         const profileData = await profileRes.json();
-        const matchesData = await matchesRes.json();
+        const rerankData = await rerankRes.json();
 
         setSeeker(profileData);
-        setMatches(matchesData);
+        setResults(rerankData);
         cacheProfile(resolvedId, profileData);
-        cacheMatches(resolvedId, matchesData);
+        cacheRerank(resolvedId, rerankData);
       } catch (err) {
-        setError(err.message || "Something went wrong fetching matches.");
+        setError(err.message || "Something went wrong fetching reranked matches.");
         fetchedRef.current[resolvedId] = false;
       } finally {
         setLoading(false);
@@ -86,34 +102,33 @@ export default function MatchesPage() {
       }
     };
 
-    fetchProfileAndMatches();
-  }, [resolvedId, API_BASE, cacheProfile, cacheMatches, clearMatches, start, stop]);
+    fetchProfileAndRerank();
+  }, [resolvedId, API_BASE, cacheProfile, cacheRerank, clearRerank, start, stop]);
 
-  const handleRerank = () => {
-    if (!resolvedId) {
-      setError("Missing profile id. Please upload your profile first.");
-      return;
+  const goBackToMatches = () => {
+    if (resolvedId) {
+      navigate(`/matches/${resolvedId}`);
+    } else {
+      navigate("/upload");
     }
-    navigate(`/matches/ai/${resolvedId}`);
   };
 
   return (
     <div className="max-w-5xl mx-auto mt-10 px-4 space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm text-blue-700 font-semibold">Semantic Matches</p>
-          <h2 className="text-2xl font-bold text-gray-900">Matches</h2>
+          <p className="text-sm text-blue-700 font-semibold">AI Based Analysis And Matching</p>
+          <h2 className="text-2xl font-bold text-gray-900">Smart Matches</h2>
           <p className="text-sm text-gray-600">
-            Based on your profile and preferences.
+            Curated by AI with detailed alignment on preferences, self, and location.
           </p>
         </div>
         <button
           type="button"
-          onClick={handleRerank}
-          disabled={loading || matches.length === 0}
-          className="px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold bg-white shadow-sm cursor-pointer hover:bg-gray-50 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
+          onClick={goBackToMatches}
+          className="px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold bg-white cursor-pointer shadow-sm hover:bg-gray-50"
         >
-          View AI Based Analysis!
+          See semantic matches only!
         </button>
       </div>
 
@@ -123,14 +138,6 @@ export default function MatchesPage() {
             {seeker.canonical?.name || "Your profile"}
           </h3>
           <div className="grid gap-4 md:grid-cols-2 text-sm text-gray-800">
-            <div className="min-w-[220px]">
-              <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Self</p>
-              <p className="mt-1">{seeker.who_am_i || "—"}</p>
-            </div>
-            <div className="min-w-[220px]">
-              <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Looking for</p>
-              <p className="mt-1">{seeker.looking_for || "—"}</p>
-            </div>
             <div>
               <p className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Age</p>
               <p className="mt-1">{seeker.canonical?.approx_age ?? "—"}</p>
@@ -194,19 +201,24 @@ export default function MatchesPage() {
           )}
         </div>
       )}
+
+      {loading && (
+        <div className="text-center text-sm text-gray-600">Analysis in progress...</div>
+      )}
       {error && <p className="text-red-600 text-sm">{error}</p>}
-      {!loading && !error && matches.length === 0 && (
-        <p className="text-gray-600">
-          Once your profile is processed, we’ll show compatible profiles here.
-        </p>
+      {!loading && !error && results.length === 0 && (
+        <p className="text-gray-600">No matches to analyse yet.</p>
       )}
 
-      <div className="mt-6 grid gap-4">
-        {matches.map((match) => (
-          <div key={match.profile_id} className="bg-white rounded-xl shadow p-4">
-            <div className="flex items-start justify-between gap-4">
+      <div className={`grid gap-5 ${blurClass}`}>
+        {results.map((match) => (
+          <div
+            key={match.profile_id}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
+          >
+            <div className="flex items-start justify-between gap-4 space-y-2 ">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-lg">
+                <h3 className="font-semibold text-lg text-gray-900">
                   {match.canonical?.name || `Profile ${match.profile_id}`}
                 </h3>
                 <p className="text-xs text-gray-500">
@@ -241,33 +253,85 @@ export default function MatchesPage() {
                   )}
                 </div>
               </div>
-              <span className="text-sm text-green-600 font-medium">
-                {(match.score * 100).toFixed(0)}% compatible
-              </span>
+              <div className="text-right">
+                <span className="text-xs uppercase text-gray-500 font-bold">Overall fit</span>
+                <div className="text-xl font-semibold text-blue-700">
+                  {Math.round((match.score || 0) * 100)}%
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+              <p className="text-sm text-gray-800 font-semibold tracking-wide mb-1">Overall Compatibility</p>
+              <p className="text-sm text-gray-800">{formatReason(match)}</p>
             </div>
 
             {(match.who_am_i || match.looking_for) && (
               <div className="mt-3 space-y-2 w-full">
                 {match.who_am_i && (
-                  <details className="text-sm text-gray-700 border border-gray-100 rounded-lg shadow-sm overflow-hidden w-full">
+                  <details className="text-sm text-gray-800 border border-gray-100 rounded-lg shadow-sm overflow-hidden w-full">
                     <summary className="cursor-pointer select-none flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 w-full">
                       <span className="text-sm font-semibold text-gray-800">{`How ${match.canonical?.name?.split(' ')[0]} describes themself?`}</span>
                       <span className="text-gray-700 text-lg leading-none">⌄</span>
                     </summary>
-                    <p className="bg-white px-3 py-3 text-gray-800">{match.who_am_i}</p>
+                    <p className="bg-white px-3 py-3 text-sm text-gray-800">{match.who_am_i}</p>
                   </details>
                 )}
                 {match.looking_for && (
-                  <details className="text-sm text-gray-700 border border-gray-100 rounded-lg shadow-sm overflow-hidden w-full">
+                  <details className="text-sm text-gray-800 border border-gray-100 rounded-lg shadow-sm overflow-hidden w-full">
                     <summary className="cursor-pointer select-none flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 w-full">
                       <span className="text-sm font-semibold text-gray-800">{`What ${match.canonical?.name?.split(' ')[0]} is looking for?`}</span>
-                      <span className="text-gray-700 text-lg leading-none">⌄</span>
+                      <span className="text-blue-700 text-lg leading-none">⌄</span>
                     </summary>
-                    <p className="bg-white px-3 py-3 text-gray-800">{match.looking_for}</p>
+                    <p className="bg-white px-3 py-3 text-sm text-gray-800">{match.looking_for}</p>
                   </details>
                 )}
               </div>
             )}
+
+            <div className="mt-3 space-y-2">
+              {match.components && (
+                <div className="grid gap-3">
+                  {Object.entries(componentLabels).map(([key, label]) => {
+                    const val = match.components?.[key] ?? null;
+                    if (val === null || val === undefined) return null;
+                    const pct = Math.max(0, Math.min(100, Math.round(val * 100)));
+                    const reasonMap = {
+                      pref_to_self: match.pref_to_self_reason,
+                      self_to_pref: match.self_to_pref_reason,
+                      distance: match.location_reason,
+                    };
+                    const reason = reasonMap[key] || "LLM rationale not provided.";
+                    const showLocationOpen =
+                      key === "distance" && Boolean(match.location_open);
+                    return (
+                      <div key={key} className="rounded-xl border border-gray-100 p-3 bg-white">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-700">{label}</span>
+                            {showLocationOpen && (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                                Open to any location
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-blue-700">{pct}%</span>
+                        </div>
+                        <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-2 bg-blue-500"
+                            style={{ width: `${pct}%` }}
+                            aria-label={`${label} ${pct}%`}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-gray-600 leading-snug">{reason}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+
           </div>
         ))}
       </div>
