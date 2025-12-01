@@ -174,6 +174,7 @@ export default function AiMatchesPage() {
             match={match}
             componentLabels={componentLabels}
             formatReason={formatReason}
+            showBaseScore
           />
         ))}
       </div>

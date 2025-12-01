@@ -142,6 +142,17 @@ def rerank_with_llm(
       - looking_for (str, candidate's own preferences)
       - optionally: who_am_i (if you add it later)
     """
+    def _annotate_base(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            {
+                **c,
+                "base_score": c.get("base_score", c.get("score")),
+            }
+            for c in items
+        ]
+
+    candidates = _annotate_base(candidates)
+
     if not client.api_key or not candidates:
         return candidates[:limit]
 
@@ -180,7 +191,7 @@ def rerank_with_llm(
         cand_payload.append(
             {
                 "profile_id": cid,
-                "base_score": float(c.get("score", 0.0)),
+                "base_score": float(c.get("base_score", c.get("score", 0.0))),
                 "name": (c.get("canonical") or {}).get("name", ""),
                 "canonical": c.get("canonical") or {},
                 "dynamic_features": c.get("dynamic_features") or {},
@@ -279,10 +290,12 @@ def rerank_with_llm(
             cid = cand.get("profile_id")
             overrides = reranked_map.get(cid)
             base_components = cand.get("components") or components_map.get(cid)
+            base_score = cand.get("base_score", cand.get("score"))
             if overrides:
                 cand = {
                     **cand,
                     "score": overrides["score"],
+                    "base_score": base_score,
                     "reason": overrides.get("reason"),
                     "pref_to_self_reason": overrides.get("pref_to_self_reason"),
                     "self_to_pref_reason": overrides.get("self_to_pref_reason"),
@@ -292,7 +305,14 @@ def rerank_with_llm(
                     "who_am_i": cand.get("who_am_i") or who_map.get(cid) or "",
                 }
             elif base_components:
-                cand = {**cand, "components": base_components, "who_am_i": cand.get("who_am_i") or who_map.get(cid) or ""}
+                cand = {
+                    **cand,
+                    "base_score": base_score,
+                    "components": base_components,
+                    "who_am_i": cand.get("who_am_i") or who_map.get(cid) or "",
+                }
+            else:
+                cand = {**cand, "base_score": base_score, "who_am_i": cand.get("who_am_i") or who_map.get(cid) or ""}
             merged.append(cand)
 
         merged.sort(key=lambda x: x.get("score", 0.0), reverse=True)

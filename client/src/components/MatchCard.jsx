@@ -1,10 +1,15 @@
-export default function MatchCard({ match, componentLabels, formatReason }) {
+export default function MatchCard({ match, componentLabels, formatReason, showBaseScore = false }) {
   if (!match) return null;
 
   const name = match.canonical?.name || `Profile ${match.profile_id}`;
   const firstName = name?.split(" ")[0] || "This match";
   const showComponents = componentLabels && match.components;
   const overallReason = typeof formatReason === "function" ? formatReason(match) : null;
+  const baseScoreValue = typeof match.base_score === "number" ? match.base_score : null;
+  const baseScorePct =
+    baseScoreValue !== null
+      ? Math.max(0, Math.min(100, Math.round(baseScoreValue * 100)))
+      : null;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
@@ -50,6 +55,11 @@ export default function MatchCard({ match, componentLabels, formatReason }) {
           <div className="text-xl font-semibold text-blue-700">
             {Math.round((match.score || 0) * 100)}%
           </div>
+          {showBaseScore && baseScorePct !== null && (
+            <div className="mt-1 text-xs text-gray-500">
+              Base semantic match: <span className="font-semibold text-gray-800">{baseScorePct}%</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -102,11 +112,11 @@ export default function MatchCard({ match, componentLabels, formatReason }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-gray-700">{label}</span>
-                      {showLocationOpen && (
-                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
-                          Open to any location
-                        </span>
-                      )}
+                            {showLocationOpen && (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                                Location flexible
+                              </span>
+                            )}
                     </div>
                     <span className="text-sm font-semibold text-blue-700">{pct}%</span>
                   </div>

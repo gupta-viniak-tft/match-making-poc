@@ -13,6 +13,7 @@ class ProfileResponse(BaseModel):
     canonical: Optional[Dict[str, Any]] = None
     dynamic_features: Optional[Dict[str, Any]] = None
     score: Optional[float] = None
+    base_score: Optional[float] = None
     looking_for: Optional[str] = None
     components: Optional[Dict[str, Any]] = None
     reason: Optional[str] = None
