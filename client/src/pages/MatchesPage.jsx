@@ -151,7 +151,7 @@ export default function MatchesPage() {
 
       <div className="mt-6 grid gap-4 md:gap-5">
         {matches.map((match) => (
-          <MatchCard key={match.profile_id} match={match} />
+          <MatchCard key={match.profile_id} match={match} seekerCanonical={seeker?.canonical} />
         ))}
       </div>
     </div>

@@ -175,6 +175,7 @@ export default function AiMatchesPage() {
             componentLabels={componentLabels}
             formatReason={formatReason}
             showBaseScore
+            seekerCanonical={seeker?.canonical}
           />
         ))}
       </div>

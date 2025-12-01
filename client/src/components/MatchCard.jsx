@@ -1,4 +1,10 @@
-export default function MatchCard({ match, componentLabels, formatReason, showBaseScore = false }) {
+export default function MatchCard({
+  match,
+  componentLabels,
+  formatReason,
+  showBaseScore = false,
+  seekerCanonical = null,
+}) {
   if (!match) return null;
 
   const name = match.canonical?.name || `Profile ${match.profile_id}`;
@@ -10,6 +16,35 @@ export default function MatchCard({ match, componentLabels, formatReason, showBa
     baseScoreValue !== null
       ? Math.max(0, Math.min(100, Math.round(baseScoreValue * 100)))
       : null;
+  const dynamicEntries = Object.entries(match.dynamic_features || {})
+    .map(([key, value]) => {
+      if (value === null || value === undefined || value === "") return null;
+      const label = key
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+      return { key, label, value };
+    })
+    .filter(Boolean);
+  const canonicalKeys = Array.from(
+    new Set([
+      ...Object.keys(match.canonical || {}),
+      ...Object.keys(seekerCanonical || {}),
+    ])
+  );
+
+  const canonicalRows = canonicalKeys
+    .map((key) => {
+      const seekerVal = seekerCanonical?.[key];
+      const candidateVal = match.canonical?.[key];
+      if (seekerVal == null && candidateVal == null) return null;
+      const label = key
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+      return { key, label, seekerVal, candidateVal };
+    })
+    .filter(Boolean);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
@@ -132,6 +167,50 @@ export default function MatchCard({ match, componentLabels, formatReason, showBa
               );
             })}
           </div>
+        </div>
+      )}
+
+      {canonicalRows.length > 0 && (
+        <div className="mt-3">
+          <details className="text-sm text-gray-800 border border-gray-100 rounded-lg shadow-sm overflow-hidden w-full">
+            <summary className="cursor-pointer select-none flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 w-full">
+              <span className="text-sm font-semibold text-gray-800">Basic Details</span>
+              <span className="text-blue-700 text-lg leading-none">⌄</span>
+            </summary>
+            <div className="bg-white px-3 py-3 space-y-3">
+              <div className="flex flex-wrap gap-3 justify-between items-end border-b border-gray-100 pb-2 text-[11px] uppercase tracking-wide text-gray-500">
+                <div className="min-w-[120px]">Field</div>
+                <div className="flex-1 min-w-[200px] text-gray-600">You</div>
+                <div className="flex-1 min-w-[200px] text-gray-600">{firstName}</div>
+              </div>
+              {canonicalRows.map((row) => (
+                <div key={row.key} className="flex flex-wrap gap-3 justify-between border-b last:border-0 border-gray-100 pb-2">
+                  <div className="text-xs uppercase text-gray-500 tracking-wide min-w-[120px]">{row.label}</div>
+                  <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.seekerVal || "Not provided"}</div>
+                  <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.candidateVal || "Not provided"}</div>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
+
+      {dynamicEntries.length > 0 && (
+        <div className="mt-3">
+          <details className="text-sm text-gray-800 border border-gray-100 rounded-lg shadow-sm overflow-hidden w-full">
+            <summary className="cursor-pointer select-none flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 w-full">
+              <span className="text-sm font-semibold text-gray-800">Other Information</span>
+              <span className="text-blue-700 text-lg leading-none">⌄</span>
+            </summary>
+            <div className="bg-white px-3 py-3 space-y-2">
+              {dynamicEntries.map((item) => (
+                <div key={item.key} className="flex items-start justify-between gap-3 border-b last:border-0 border-gray-100 pb-2">
+                  <span className="text-xs uppercase text-gray-500 tracking-wide min-w-[140px]">{item.label}</span>
+                  <span className="text-xs text-gray-800 font-medium break-words">{String(item.value)}</span>
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
       )}
     </div>
