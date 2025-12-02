@@ -69,7 +69,7 @@ Your job:
    Location rules:
    - ONLY treat location as flexible if the person explicitly says so.
    - If someone does not mention openness to location, assume they prefer their current/based location and treat mismatched locations as a negative unless clearly marked flexible.
-   - If locations differ but are in close proximity (as indicated by provided proximity/distance), treat that as a partial/positive.
+   - If locations differ but are in close proximity (as indicated by provided proximity/distance), treat that as a partial/positive fit even when strict openness is not stated, but do not state proximity number.
    - "location_open" is true ONLY if BOTH seeker and candidate explicitly signal flexibility on location in the seeker.looking_for and candidate.looking_for.
 
 3. For strict or strong preferences (e.g. "must be same religion", "non-smoker", "no alcohol"):
