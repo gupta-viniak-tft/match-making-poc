@@ -9,7 +9,7 @@ from .prompts import CANONICAL_MATCH_SYSTEM_PROMPT
 
 DEFAULT_FIELD_LABELS = {
     "name": "Name",
-    "approx_age": "Approx Age",
+    "approx_age": "Age",
     "dob": "Date of Birth",
     "city": "City",
     "state": "State",

@@ -26,17 +26,27 @@ export default function MatchCard({
       if (value === null || value === undefined || value === "") return null;
       const label = key
         .split("_")
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .map((part) => {
+          const text = part.charAt(0).toUpperCase() + part.slice(1);
+          return text === "Approx" ? "Age" : text;
+        })
         .join(" ");
       return { key, label, value };
     })
     .filter(Boolean);
+  const hiddenCanonicalFields = new Set(["name", "city", "country", "state", "religion"]);
   const canonicalKeys = Array.from(
     new Set([
       ...Object.keys(match.canonical || {}),
       ...Object.keys(seekerCanonical || {}),
     ])
-  );
+  ).filter((key) => !hiddenCanonicalFields.has(key));
+
+  canonicalKeys.sort((a, b) => {
+    if (a === "approx_age") return -1;
+    if (b === "approx_age") return 1;
+    return a.localeCompare(b);
+  });
 
   const canonicalRows = canonicalKeys
     .map((key) => {
@@ -45,7 +55,10 @@ export default function MatchCard({
       if (seekerVal == null && candidateVal == null) return null;
       const label = key
         .split("_")
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .map((part) => {
+          const text = part.charAt(0).toUpperCase() + part.slice(1);
+          return text === "Approx" ? "Age" : text;
+        })
         .join(" ");
       return { key, label, seekerVal, candidateVal };
     })
@@ -170,12 +183,19 @@ export default function MatchCard({
                     </div>
                     <span className="text-sm font-semibold text-blue-700">{pct}%</span>
                   </div>
-                  <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden relative">
                     <div
-                      className="h-2 bg-blue-500"
+                      className="h-2 bg-blue-500 absolute left-0 top-0"
                       style={{ width: `${pct}%` }}
                       aria-label={`${label} ${pct}%`}
                     />
+                    {showLocationOpen && pct < 100 && (
+                      <div
+                        className="h-2 bg-green-300 absolute top-0"
+                        style={{ left: `${pct}%`, width: `${100 - pct}%` }}
+                        aria-label="Additional flexibility on location"
+                      />
+                    )}
                   </div>
                   <p className="mt-2 text-xs text-gray-600 leading-snug">{reason}</p>
                 </div>
@@ -193,20 +213,20 @@ export default function MatchCard({
               <span className="text-blue-700 text-lg leading-none">⌄</span>
             </summary>
             <div className="bg-white px-3 py-3 space-y-3">
-              <div className="flex flex-wrap gap-3 justify-between items-end border-b border-gray-100 pb-2 text-[11px] uppercase tracking-wide text-gray-500">
+              <div className="hidden md:flex flex-wrap gap-3 justify-between items-end border-b border-gray-100 pb-2 text-[11px] uppercase tracking-wide text-gray-500">
                 <div className="min-w-[120px]">Field</div>
                 <div className="flex-1 min-w-[200px] text-gray-600">You</div>
                 <div className="flex-1 min-w-[200px] text-gray-600">{firstName}</div>
                 {showCanonicalScores && <div className="min-w-[120px] text-right text-gray-600">Match</div>}
               </div>
               {canonicalRows.map((row) => (
-                <div key={row.key} className="flex flex-col gap-1 border-b last:border-0 border-gray-100 pb-2">
-                  <div className="flex flex-wrap gap-3 justify-between items-start">
-                    <div className="text-xs uppercase text-gray-500 tracking-wide min-w-[120px]">{row.label}</div>
-                    <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.seekerVal || "Not provided"}</div>
-                    <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.candidateVal || "Not provided"}</div>
+                <div key={row.key} className="border-b last:border-0 border-gray-100 pb-2">
+                  <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_1fr_auto] gap-2 md:gap-3 items-start">
+                    <div className="text-xs uppercase text-gray-500 tracking-wide">{row.label}</div>
+                    <div className="text-xs text-gray-800 font-medium md:min-w-[180px] break-words">{row.seekerVal || "Not provided"}</div>
+                    <div className="text-xs text-gray-800 font-medium md:min-w-[180px] break-words">{row.candidateVal || "Not provided"}</div>
                     {showCanonicalScores && (
-                      <div className="min-w-[120px] flex justify-end">
+                      <div className="flex justify-start md:justify-end">
                         {(() => {
                           const scoreInfo = canonicalScoreMap[row.key];
                           const pct =
@@ -215,7 +235,7 @@ export default function MatchCard({
                               : null;
                           if (pct === null) return null;
                           return (
-                            <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold text-[11px]">
+                            <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold text-[11px] whitespace-nowrap">
                               {pct}% match
                             </span>
                           );
@@ -224,7 +244,7 @@ export default function MatchCard({
                     )}
                   </div>
                   {showCanonicalScores && canonicalScoreMap[row.key]?.reason && (
-                    <p className="text-[11px] text-gray-600 leading-snug">
+                    <p className="text-[11px] text-gray-600 leading-snug mt-1">
                       {canonicalScoreMap[row.key].reason}
                     </p>
                   )}
@@ -244,9 +264,9 @@ export default function MatchCard({
             </summary>
             <div className="bg-white px-3 py-3 space-y-2">
               {dynamicEntries.map((item) => (
-                <div key={item.key} className="flex items-start justify-between gap-3 border-b last:border-0 border-gray-100 pb-2">
-                  <span className="text-xs uppercase text-gray-500 tracking-wide min-w-[140px]">{item.label}</span>
-                  <span className="text-xs text-gray-800 font-medium break-words">{String(item.value)}</span>
+                <div key={item.key} className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 border-b last:border-0 border-gray-100 pb-2">
+                  <span className="text-xs uppercase text-gray-500 tracking-wide sm:min-w-[140px]">{item.label}</span>
+                  <span className="text-xs text-gray-800 font-medium break-words w-full">{String(item.value)}</span>
                 </div>
               ))}
             </div>
