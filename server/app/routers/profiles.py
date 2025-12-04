@@ -11,8 +11,13 @@ from ..openai import (
     build_pref_text,
     get_embedding,
     rerank_with_llm,
+    score_canonical_fields,
 )
-from ..schemas.profile import ProfileResponse
+from ..schemas.profile import (
+    CanonicalMatchRequest,
+    CanonicalMatchResponse,
+    ProfileResponse,
+)
 from ..matching import top_matches
 from ..utils.geo import geocode_city
 
@@ -86,6 +91,13 @@ def get_matches_rerank(profile_id: str, db: Session = Depends(get_db)):
     seeker = db.get(Profile, profile_id)
     reranked = rerank_with_llm(seeker, matches, db=db, limit=20)
     return [ProfileResponse(**m) for m in reranked]
+
+
+@router.post("/matches/canonical", response_model=CanonicalMatchResponse)
+def compare_canonical(payload: CanonicalMatchRequest):
+    if not payload.seeker_canonical or not payload.candidate_canonical:
+        raise HTTPException(status_code=400, detail="Both seeker and candidate canonical data are required")
+    return score_canonical_fields(payload.seeker_canonical, payload.candidate_canonical)
 
 
 @router.get("/{profile_id}", response_model=ProfileResponse)

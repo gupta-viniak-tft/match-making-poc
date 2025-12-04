@@ -8,6 +8,7 @@ const useMatchStore = create(
       profiles: {},
       matches: {},
       reranks: {},
+      canonicalMatches: {},
       setProfile: (id, profile) =>
         set((state) => ({
           profiles: { ...state.profiles, [id]: profile },
@@ -20,6 +21,16 @@ const useMatchStore = create(
         set((state) => ({
           reranks: { ...state.reranks, [id]: data },
         })),
+      setCanonicalMatch: (seekerId, candidateId, data) =>
+        set((state) => {
+          const existing = state.canonicalMatches[seekerId] || {};
+          return {
+            canonicalMatches: {
+              ...state.canonicalMatches,
+              [seekerId]: { ...existing, [candidateId]: data },
+            },
+          };
+        }),
       clearMatches: (id) =>
         set((state) => {
           const next = { ...state.matches };
@@ -32,7 +43,13 @@ const useMatchStore = create(
           delete next[id];
           return { reranks: next };
         }),
-      clear: () => set({ profiles: {}, matches: {}, reranks: {} }),
+      clearCanonicalMatches: (seekerId) =>
+        set((state) => {
+          const next = { ...state.canonicalMatches };
+          delete next[seekerId];
+          return { canonicalMatches: next };
+        }),
+      clear: () => set({ profiles: {}, matches: {}, reranks: {}, canonicalMatches: {} }),
     }),
     {
       name: "match-maker-store",
@@ -40,6 +57,7 @@ const useMatchStore = create(
         profiles: state.profiles,
         matches: state.matches,
         reranks: state.reranks,
+        canonicalMatches: state.canonicalMatches,
       }),
     }
   )

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -25,3 +25,23 @@ class ProfileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CanonicalFieldScore(BaseModel):
+    field: str
+    label: str
+    seeker_value: Optional[Any] = None
+    candidate_value: Optional[Any] = None
+    score: Optional[float] = None
+    reason: Optional[str] = None
+
+
+class CanonicalMatchRequest(BaseModel):
+    seeker_canonical: Dict[str, Any]
+    candidate_canonical: Dict[str, Any]
+
+
+class CanonicalMatchResponse(BaseModel):
+    overall_score: Optional[float] = None
+    summary: Optional[str] = None
+    fields: List[CanonicalFieldScore] = Field(default_factory=list)

@@ -19,12 +19,17 @@ export default function AiMatchesPage() {
   const {
     profiles: cachedProfiles,
     reranks: cachedReranks,
+    canonicalMatches,
     setProfile: cacheProfile,
     setRerank: cacheRerank,
     clearRerank,
+    setCanonicalMatch,
+    clearCanonicalMatches,
   } = useMatchStore();
   const { start, stop } = useLoadingStore();
   const fetchedRef = useRef({});
+  const [canonicalLoadingMap, setCanonicalLoadingMap] = useState({});
+  const [canonicalErrorMap, setCanonicalErrorMap] = useState({});
 
   useEffect(() => {
     // Clear local view on profile change before fetching new data
@@ -32,6 +37,8 @@ export default function AiMatchesPage() {
     setResults([]);
     setError("");
     fetchedRef.current[resolvedId] = false;
+    setCanonicalLoadingMap({});
+    setCanonicalErrorMap({});
   }, [resolvedId]);
 
   const componentLabels = {
@@ -100,6 +107,7 @@ export default function AiMatchesPage() {
         setResults(rerankData);
         cacheProfile(resolvedId, profileData);
         cacheRerank(resolvedId, rerankData);
+        clearCanonicalMatches(resolvedId);
       } catch (err) {
         setError(err.message || "Something went wrong fetching reranked matches.");
         fetchedRef.current[resolvedId] = false;
@@ -124,10 +132,67 @@ export default function AiMatchesPage() {
     if (!resolvedId) return;
     fetchedRef.current[resolvedId] = false;
     clearRerank(resolvedId);
+    clearCanonicalMatches(resolvedId);
     setResults([]);
     setError("");
     setRefreshTick((t) => t + 1);
   };
+
+  useEffect(() => {
+    if (!resolvedId || !seeker?.canonical || results.length === 0) return;
+    let cancelled = false;
+    const run = async () => {
+      for (const match of results) {
+        const candId = match.profile_id;
+        if (!candId) continue;
+        const existing = canonicalMatches?.[resolvedId]?.[candId];
+        if (existing || cancelled) continue;
+        setCanonicalLoadingMap((prev) => ({ ...prev, [candId]: true }));
+        setCanonicalErrorMap((prev) => {
+          const next = { ...prev };
+          delete next[candId];
+          return next;
+        });
+        try {
+          const resp = await fetch(`${API_BASE}/profile/matches/canonical`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              seeker_canonical: seeker.canonical,
+              candidate_canonical: match.canonical,
+            }),
+          });
+          if (!resp.ok) {
+            const msg = await resp.text();
+            throw new Error(msg || "Failed to score canonical details.");
+          }
+          const data = await resp.json();
+          if (!cancelled) {
+            setCanonicalMatch(resolvedId, candId, data);
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setCanonicalErrorMap((prev) => ({
+              ...prev,
+              [candId]: err.message || "Unable to score canonical details.",
+            }));
+          }
+        } finally {
+          if (!cancelled) {
+            setCanonicalLoadingMap((prev) => {
+              const next = { ...prev };
+              delete next[candId];
+              return next;
+            });
+          }
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedId, seeker?.canonical, results, API_BASE, setCanonicalMatch]);
 
   return (
     <div className="max-w-5xl mx-auto mt-10 px-4 space-y-6 pb-10">
@@ -176,6 +241,9 @@ export default function AiMatchesPage() {
             formatReason={formatReason}
             showBaseScore
             seekerCanonical={seeker?.canonical}
+            canonicalMatch={canonicalMatches?.[resolvedId]?.[match.profile_id]}
+            canonicalLoading={Boolean(canonicalLoadingMap[match.profile_id])}
+            canonicalError={canonicalErrorMap[match.profile_id]}
           />
         ))}
       </div>

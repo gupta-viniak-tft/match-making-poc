@@ -1,9 +1,14 @@
+import { useMemo } from "react";
+
 export default function MatchCard({
   match,
   componentLabels,
   formatReason,
   showBaseScore = false,
   seekerCanonical = null,
+  canonicalMatch = null,
+  canonicalLoading = false,
+  canonicalError = "",
 }) {
   if (!match) return null;
 
@@ -45,6 +50,16 @@ export default function MatchCard({
       return { key, label, seekerVal, candidateVal };
     })
     .filter(Boolean);
+
+  const canonicalScoreMap = useMemo(() => {
+    const map = {};
+    (canonicalMatch?.fields || []).forEach((item) => {
+      if (item?.field) map[item.field] = item;
+    });
+    return map;
+  }, [canonicalMatch]);
+
+  const showCanonicalScores = Boolean(canonicalLoading || canonicalMatch || canonicalError);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
@@ -182,12 +197,37 @@ export default function MatchCard({
                 <div className="min-w-[120px]">Field</div>
                 <div className="flex-1 min-w-[200px] text-gray-600">You</div>
                 <div className="flex-1 min-w-[200px] text-gray-600">{firstName}</div>
+                {showCanonicalScores && <div className="min-w-[120px] text-right text-gray-600">Match</div>}
               </div>
               {canonicalRows.map((row) => (
-                <div key={row.key} className="flex flex-wrap gap-3 justify-between border-b last:border-0 border-gray-100 pb-2">
-                  <div className="text-xs uppercase text-gray-500 tracking-wide min-w-[120px]">{row.label}</div>
-                  <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.seekerVal || "Not provided"}</div>
-                  <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.candidateVal || "Not provided"}</div>
+                <div key={row.key} className="flex flex-col gap-1 border-b last:border-0 border-gray-100 pb-2">
+                  <div className="flex flex-wrap gap-3 justify-between items-start">
+                    <div className="text-xs uppercase text-gray-500 tracking-wide min-w-[120px]">{row.label}</div>
+                    <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.seekerVal || "Not provided"}</div>
+                    <div className="flex-1 min-w-[200px] text-xs text-gray-800 font-medium">{row.candidateVal || "Not provided"}</div>
+                    {showCanonicalScores && (
+                      <div className="min-w-[120px] flex justify-end">
+                        {(() => {
+                          const scoreInfo = canonicalScoreMap[row.key];
+                          const pct =
+                            scoreInfo && typeof scoreInfo.score === "number"
+                              ? Math.round(Math.max(0, Math.min(1, scoreInfo.score)) * 100)
+                              : null;
+                          if (pct === null) return null;
+                          return (
+                            <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold text-[11px]">
+                              {pct}% match
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                  {showCanonicalScores && canonicalScoreMap[row.key]?.reason && (
+                    <p className="text-[11px] text-gray-600 leading-snug">
+                      {canonicalScoreMap[row.key].reason}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
